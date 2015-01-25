@@ -175,10 +175,12 @@
    */
   Controller.prototype.removeItem = function (id) {
     this.model.remove(id, function () {
-      this.$todoList.removeChild($$('[data-id="' + id + '"]'));
+      var ids = [].concat(id);
+      ids.forEach( function(id) {
+        this.$todoList.removeChild($$('[data-id="' + id + '"]'));
+      }.bind(this));
+      this._filter();
     }.bind(this));
-
-    this._filter();
   };
 
   /**
@@ -186,9 +188,11 @@
    */
   Controller.prototype.removeCompletedItems = function () {
     this.model.read({ completed: 1 }, function (data) {
+      var ids = [];
       data.forEach(function (item) {
-        this.removeItem(item.id);
+        ids.push(item.id);
       }.bind(this));
+      this.removeItem(ids);
     }.bind(this));
 
     this._filter();
@@ -203,25 +207,32 @@
    *                          or not
    * @param {boolean|undefined} silent Prevent re-filtering the todo items
    */
-  Controller.prototype.toggleComplete = function (id, checkbox, silent) {
+  Controller.prototype.toggleComplete = function (ids, checkbox, silent) {
     var completed = checkbox.checked ? 1 : 0;
 
-    this.model.update(id, { completed: completed }, function () {
-      var listItem = $$('[data-id="' + id + '"]');
-
-      if (!listItem) {
-        return;
+    this.model.update(ids, { completed: completed }, function () {
+      if ( ids.constructor != Array ) {
+        ids = [ ids ];
       }
 
-      listItem.className = completed ? 'completed' : '';
+      ids.forEach( function(id) {
+        var listItem = $$('[data-id="' + id + '"]');
 
-      // In case it was toggled from an event and not by clicking the checkbox
-      listItem.querySelector('input').checked = completed;
-    });
+        if (!listItem) {
+          return;
+        }
 
-    if (!silent) {
-      this._filter();
-    }
+        listItem.className = completed ? 'completed' : '';
+
+        // In case it was toggled from an event and not by clicking the checkbox
+        listItem.querySelector('input').checked = completed;
+      });
+
+      if (!silent) {
+        this._filter();
+      }
+
+    }.bind(this));
   };
 
   /**
@@ -239,12 +250,13 @@
     }
 
     this.model.read({ completed: query }, function (data) {
+      var ids = [];
       data.forEach(function (item) {
-        this.toggleComplete(item.id, e.target, true);
+        ids.push(item.id);
       }.bind(this));
+      this.toggleComplete(ids, e.target, false);
     }.bind(this));
 
-    this._filter();
   };
 
   /**
@@ -252,16 +264,17 @@
    * number of todos.
    */
   Controller.prototype._updateCount = function () {
-    var todos = this.model.getCount();
+    this.model.getCount(function(todos) {
+      this.$todoItemCounter.innerHTML = this.view.itemCounter(todos.active);
 
-    this.$todoItemCounter.innerHTML = this.view.itemCounter(todos.active);
+      this.$clearCompleted.innerHTML = this.view.clearCompletedButton(todos.completed);
+      this.$clearCompleted.style.display = todos.completed > 0 ? 'block' : 'none';
 
-    this.$clearCompleted.innerHTML = this.view.clearCompletedButton(todos.completed);
-    this.$clearCompleted.style.display = todos.completed > 0 ? 'block' : 'none';
+      this.$toggleAll.checked = todos.completed === todos.total;
 
-    this.$toggleAll.checked = todos.completed === todos.total;
+      this._toggleFrame(todos);
+    }.bind(this));
 
-    this._toggleFrame(todos);
   };
 
   /**
