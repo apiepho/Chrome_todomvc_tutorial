@@ -1,11 +1,11 @@
 {
   "manifest_version": 2,
-  "name": "Codelab - Step 2",
+  "name": "Codelab - Step 3",
   "version": "1",
   "icons": {
     "128": "icon_128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms", "notifications"],
   "app": {
     "background": {
       "scripts": ["background.js"]
